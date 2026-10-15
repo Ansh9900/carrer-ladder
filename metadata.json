@@ -1,0 +1,6 @@
+{
+  "name": "Career Ladder",
+  "description": "AI-Powered Skill Intelligence Platform for Students, Institutions, and Industry — Bridging India's Skill Gap (Team Stack_Spartans)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

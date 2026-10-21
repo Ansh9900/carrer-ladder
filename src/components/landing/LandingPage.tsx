@@ -111,7 +111,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchApp, onExplore
                   src="/src/assets/images/career_ladder_hero_1792012205941.jpg"
                   alt="Career Ladder University Innovation Lab"
                   className="w-full h-[400px] md:h-[480px] object-cover"
-                  referrerPolicy="no-referrer"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
 

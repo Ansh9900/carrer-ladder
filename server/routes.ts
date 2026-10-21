@@ -19,7 +19,17 @@ apiRouter.get('/health', (req, res) => {
 // --- AUTH & DEMO SWITCH ---
 apiRouter.get('/auth/me', (req, res) => {
   const store = db.get();
-  const user = store.users.find(u => u.id === currentUserId) || store.users[0];
+  let user = store.users.find(u => u.id === currentUserId);
+  if (!user) {
+    // currentUserId may point to a student that no longer has a User record — heal it
+    const student = store.students.find(s => s.userId === currentUserId) || store.students[0];
+    if (student) {
+      user = ensureUserForStudent(student);
+      currentUserId = user.id;
+    } else {
+      user = store.users[0];
+    }
+  }
   res.json({ user });
 });
 
@@ -95,12 +105,33 @@ apiRouter.post('/resume/parse', async (req, res) => {
   }
 });
 
+// Ensure a User record exists for a StudentProfile (repairs missing user rows after delete/reset)
+function ensureUserForStudent(student: StudentProfile): User {
+  const store = db.get();
+  let user = store.users.find(u => u.id === student.userId);
+  if (!user) {
+    user = {
+      id: student.userId,
+      email: student.email,
+      name: student.name,
+      role: 'student',
+      avatarUrl: '/src/assets/images/avatar_student_lead_1792012204911.jpg',
+      institutionId: student.institution
+    };
+    db.update(s => { s.users.push(user!); });
+  }
+  return user;
+}
+
 // Helper to get active student
 function getActiveStudent(): StudentProfile {
   const store = db.get();
   const student = store.students.find(s => s.userId === currentUserId);
   if (student) return student;
-  return store.students[0];
+  // Fallback: pick first student and heal currentUserId
+  const fallback = store.students[0];
+  if (fallback) currentUserId = fallback.userId;
+  return fallback;
 }
 
 // --- STUDENTS REGISTRATION & MANAGEMENT ---
@@ -211,7 +242,7 @@ apiRouter.post('/students/switch-active', (req, res) => {
   }
   currentUserId = targetStudent.userId;
   invalidateStudentCaches(targetStudent.id);
-  const targetUser = store.users.find(u => u.id === currentUserId) || store.users[0];
+  const targetUser = ensureUserForStudent(targetStudent);
   res.json({ success: true, student: targetStudent, user: targetUser });
 });
 
@@ -232,8 +263,9 @@ apiRouter.delete('/students/:id', (req, res) => {
   }
 
   const targetUserId = targetStudent.userId;
+  // Pick next student BEFORE we remove the target
+  const nextStudent = store.students.find(s => s.id !== targetStudent.id);
 
-  // Remove student & user & associated applications and assessment results
   db.update(s => {
     s.students = s.students.filter(st => st.id !== targetStudent.id);
     s.users = s.users.filter(u => u.id !== targetUserId);
@@ -243,23 +275,20 @@ apiRouter.delete('/students/:id', (req, res) => {
 
   invalidateStudentCaches(targetStudent.id);
 
-  // If the active user was this student, automatically switch to the first remaining student
-  let activeStudent = getActiveStudent();
-  if (currentUserId === targetUserId) {
-    const remainingStore = db.get();
-    const nextStudent = remainingStore.students[0];
-    if (nextStudent) {
-      currentUserId = nextStudent.userId;
-      activeStudent = nextStudent;
-      invalidateStudentCaches(nextStudent.id);
-    }
+  // Always switch active session to next student
+  let activeStudent = nextStudent || db.get().students[0];
+  let activeUser: User;
+  if (activeStudent) {
+    currentUserId = activeStudent.userId;
+    activeUser = ensureUserForStudent(activeStudent);
+    invalidateStudentCaches(activeStudent.id);
+  } else {
+    activeUser = db.get().users[0];
   }
-
-  const activeUser = db.get().users.find(u => u.id === currentUserId) || db.get().users[0];
 
   res.json({
     success: true,
-    message: `Candidate profile for "${targetStudent.name}" has been deleted.`,
+    message: `Candidate profile for "${targetStudent.name}" has been deleted. Now viewing ${activeStudent?.name || 'next candidate'}.`,
     activeStudent,
     user: activeUser,
     remainingStudentsCount: db.get().students.length
@@ -283,6 +312,8 @@ apiRouter.delete('/student/profile', (req, res) => {
   }
 
   const targetUserId = activeStudent.userId;
+  // Pick next student BEFORE deletion
+  const nextStudent = store.students.find(s => s.id !== activeStudent.id);
 
   db.update(s => {
     s.students = s.students.filter(st => st.id !== activeStudent.id);
@@ -293,19 +324,20 @@ apiRouter.delete('/student/profile', (req, res) => {
 
   invalidateStudentCaches(activeStudent.id);
 
-  const remainingStore = db.get();
-  const nextStudent = remainingStore.students[0];
-  if (nextStudent) {
-    currentUserId = nextStudent.userId;
-    invalidateStudentCaches(nextStudent.id);
+  let newActive = nextStudent || db.get().students[0];
+  let activeUser: User;
+  if (newActive) {
+    currentUserId = newActive.userId;
+    activeUser = ensureUserForStudent(newActive);
+    invalidateStudentCaches(newActive.id);
+  } else {
+    activeUser = db.get().users[0];
   }
-
-  const activeUser = db.get().users.find(u => u.id === currentUserId) || db.get().users[0];
 
   res.json({
     success: true,
-    message: `Candidate profile for "${activeStudent.name}" has been deleted.`,
-    activeStudent: nextStudent,
+    message: `Candidate profile for "${activeStudent.name}" has been deleted. Now viewing ${newActive?.name || 'next candidate'}.`,
+    activeStudent: newActive,
     user: activeUser,
     remainingStudentsCount: db.get().students.length
   });

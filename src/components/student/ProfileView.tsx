@@ -12,16 +12,19 @@ import {
   GraduationCap,
   UserPlus,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Users
 } from 'lucide-react';
 
 interface ProfileViewProps {
+  onNavigate?: (view: string) => void;
   onOpenNewStudentModal?: () => void;
   onStudentDeleted?: () => void;
 }
 
-export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenNewStudentModal, onStudentDeleted }) => {
+export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate, onOpenNewStudentModal, onStudentDeleted }) => {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [allStudents, setAllStudents] = useState<StudentProfile[]>([]);
   const [occupations, setOccupations] = useState<Occupation[]>([]);
   const [totalStudentsCount, setTotalStudentsCount] = useState<number>(1);
   const [isSaving, setIsSaving] = useState(false);
@@ -54,6 +57,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenNewStudentModal,
         ]);
         setProfile(profRes.student);
         setOccupations(occRes.occupations);
+        setAllStudents(studentsRes.students || []);
         setTotalStudentsCount(studentsRes.students?.length || 1);
       } catch (e) {
         console.error('Failed to load profile:', e);
@@ -64,6 +68,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenNewStudentModal,
     load();
   }, []);
 
+  const handleSwitchStudent = async (studentId: string) => {
+    try {
+      setLoading(true);
+      await api.switchActiveStudent(studentId);
+      if (onNavigate) onNavigate('dashboard');
+    } catch (e) {
+      console.error('Failed to switch student:', e);
+      setLoading(false);
+    }
+  };
+
   const handleDeleteProfile = async () => {
     if (!profile) return;
     try {
@@ -73,6 +88,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenNewStudentModal,
       setShowDeleteModal(false);
       if (onStudentDeleted) {
         onStudentDeleted();
+      } else if (onNavigate) {
+        onNavigate('dashboard');
       }
     } catch (err: any) {
       console.error('Failed to delete student profile:', err);
@@ -90,8 +107,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenNewStudentModal,
 
     try {
       await api.updateStudentProfile(profile);
-      setSuccessMsg('Profile successfully updated and persisted!');
-      setTimeout(() => setSuccessMsg(''), 4000);
+      setSuccessMsg('Profile saved! Redirecting to dashboard...');
+      setTimeout(() => {
+        if (onNavigate) onNavigate('dashboard');
+      }, 800);
     } catch (e) {
       console.error('Failed to save profile:', e);
     } finally {
@@ -159,6 +178,28 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenNewStudentModal,
 
   return (
     <div className="p-6 md:p-8 space-y-8 max-w-4xl mx-auto">
+      {/* Candidate Switcher */}
+      {allStudents.length > 1 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Users className="w-4 h-4 text-indigo-400 shrink-0" />
+            <span className="text-xs text-slate-400 font-medium hidden sm:inline">Active Candidate:</span>
+            <select
+              value={profile.id}
+              onChange={(e) => handleSwitchStudent(e.target.value)}
+              className="bg-slate-950 border border-slate-800 text-white font-semibold text-xs rounded-lg px-2.5 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer"
+            >
+              {allStudents.map(st => (
+                <option key={st.id} value={st.id} className="bg-slate-900 text-white">
+                  {st.name} — {st.department || 'Engineering'} ({st.institution})
+                </option>
+              ))}
+            </select>
+          </div>
+          <span className="text-[11px] text-slate-500 hidden sm:block">Switching candidate opens their dashboard</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="pb-6 border-b border-slate-800 flex items-center justify-between">
         <div>

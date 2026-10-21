@@ -30,6 +30,14 @@
       "role": "student",
       "avatarUrl": "/src/assets/images/avatar_student_lead_1792012204911.jpg",
       "institutionId": "NIT Surathkal"
+    },
+    {
+      "id": "usr-student-1792611998251",
+      "email": "siddharth.sen.5827@nie.ac.in",
+      "name": "Siddharth Sen",
+      "role": "student",
+      "avatarUrl": "/src/assets/images/avatar_student_lead_1792012204911.jpg",
+      "institutionId": "National Institute of Engineering"
     }
   ],
   "skills": [
@@ -843,156 +851,6 @@
   ],
   "students": [
     {
-      "id": "std-rohan",
-      "userId": "usr-student-2",
-      "name": "Rohan Verma",
-      "email": "rohan.v@nie.ac.in",
-      "phone": "+91 98111 22334",
-      "institution": "National Institute of Engineering",
-      "degree": "B.E Information Science",
-      "department": "Information Technology",
-      "graduationYear": 2026,
-      "cgpa": 8.2,
-      "location": "Bengaluru",
-      "targetOccupationId": "occ-fullstack",
-      "completedRoadmapStepIds": [],
-      "skills": [
-        {
-          "skillId": "sk-javascript",
-          "skillName": "JavaScript",
-          "category": "Languages",
-          "proficiency": "Advanced",
-          "verified": true,
-          "source": "Assessment",
-          "verifiedScore": 88
-        },
-        {
-          "skillId": "sk-react",
-          "skillName": "React",
-          "category": "Frontend",
-          "proficiency": "Intermediate",
-          "verified": true,
-          "source": "Assessment",
-          "verifiedScore": 80
-        },
-        {
-          "skillId": "sk-nodejs",
-          "skillName": "Node.js",
-          "category": "Backend",
-          "proficiency": "Intermediate",
-          "verified": false,
-          "source": "Resume"
-        },
-        {
-          "skillId": "sk-html5",
-          "skillName": "HTML5",
-          "category": "Frontend",
-          "proficiency": "Advanced",
-          "verified": false,
-          "source": "Resume"
-        },
-        {
-          "skillId": "sk-git",
-          "skillName": "Git & GitHub",
-          "category": "Core & Architecture",
-          "proficiency": "Intermediate",
-          "verified": false,
-          "source": "Self"
-        }
-      ],
-      "projects": [],
-      "certifications": []
-    },
-    {
-      "id": "std-priya",
-      "userId": "usr-student-3",
-      "name": "Priya Nair",
-      "email": "priya.n@nie.ac.in",
-      "phone": "+91 97222 33445",
-      "institution": "National Institute of Engineering",
-      "degree": "B.E Electronics & Communication",
-      "department": "Electronics",
-      "graduationYear": 2026,
-      "cgpa": 7.9,
-      "location": "Hyderabad",
-      "targetOccupationId": "occ-ml-engineer",
-      "completedRoadmapStepIds": [],
-      "skills": [
-        {
-          "skillId": "sk-python",
-          "skillName": "Python",
-          "category": "Languages",
-          "proficiency": "Intermediate",
-          "verified": true,
-          "source": "Assessment",
-          "verifiedScore": 78
-        },
-        {
-          "skillId": "sk-cpp",
-          "skillName": "C++",
-          "category": "Languages",
-          "proficiency": "Advanced",
-          "verified": false,
-          "source": "Resume"
-        },
-        {
-          "skillId": "sk-pandas",
-          "skillName": "Pandas",
-          "category": "AI & Data",
-          "proficiency": "Beginner",
-          "verified": false,
-          "source": "Resume"
-        }
-      ],
-      "projects": [],
-      "certifications": []
-    },
-    {
-      "id": "std-karthik",
-      "userId": "usr-student-4",
-      "name": "Karthik Rao",
-      "email": "karthik.r@nie.ac.in",
-      "phone": "+91 96333 44556",
-      "institution": "National Institute of Engineering",
-      "degree": "B.E Computer Science",
-      "department": "Computer Science",
-      "graduationYear": 2026,
-      "cgpa": 9.1,
-      "location": "Pune",
-      "targetOccupationId": "occ-devops-cloud",
-      "completedRoadmapStepIds": [],
-      "skills": [
-        {
-          "skillId": "sk-linux",
-          "skillName": "Linux / Shell Scripting",
-          "category": "Cloud & DevOps",
-          "proficiency": "Advanced",
-          "verified": true,
-          "source": "Assessment",
-          "verifiedScore": 94
-        },
-        {
-          "skillId": "sk-docker",
-          "skillName": "Docker",
-          "category": "Cloud & DevOps",
-          "proficiency": "Intermediate",
-          "verified": true,
-          "source": "Assessment",
-          "verifiedScore": 82
-        },
-        {
-          "skillId": "sk-git",
-          "skillName": "Git & GitHub",
-          "category": "Core & Architecture",
-          "proficiency": "Advanced",
-          "verified": false,
-          "source": "Resume"
-        }
-      ],
-      "projects": [],
-      "certifications": []
-    },
-    {
       "id": "std-1792096494983",
       "userId": "usr-student-1792096494983",
       "name": "Ananya Sen",
@@ -1035,6 +893,90 @@
         }
       ],
       "projects": [],
+      "certifications": [],
+      "completedRoadmapStepIds": []
+    },
+    {
+      "id": "std-1792611998251",
+      "userId": "usr-student-1792611998251",
+      "name": "Siddharth Sen",
+      "email": "siddharth.sen.5827@nie.ac.in",
+      "phone": "+91 96333 77889",
+      "institution": "National Institute of Engineering",
+      "degree": "B.Tech in Artificial Intelligence & Data",
+      "department": "Data Science",
+      "graduationYear": 2026,
+      "cgpa": 8.4,
+      "location": "Hyderabad",
+      "targetOccupationId": "occ-ml-engineer",
+      "skills": [
+        {
+          "skillId": "sk-python",
+          "skillName": "Python",
+          "category": "Languages",
+          "proficiency": "Advanced",
+          "verified": false,
+          "source": "Self",
+          "confidenceScore": 0.9
+        },
+        {
+          "skillId": "sk-pandas",
+          "skillName": "Pandas",
+          "category": "AI & Data",
+          "proficiency": "Advanced",
+          "verified": false,
+          "source": "Self",
+          "confidenceScore": 0.9
+        },
+        {
+          "skillId": "sk-numpy",
+          "skillName": "NumPy",
+          "category": "AI & Data",
+          "proficiency": "Advanced",
+          "verified": false,
+          "source": "Self",
+          "confidenceScore": 0.9
+        },
+        {
+          "skillId": "sk-scikit",
+          "skillName": "Scikit-Learn",
+          "category": "AI & Data",
+          "proficiency": "Intermediate",
+          "verified": false,
+          "source": "Self",
+          "confidenceScore": 0.9
+        },
+        {
+          "skillId": "sk-pytorch",
+          "skillName": "PyTorch",
+          "category": "AI & Data",
+          "proficiency": "Intermediate",
+          "verified": false,
+          "source": "Self",
+          "confidenceScore": 0.9
+        },
+        {
+          "skillId": "sk-sql",
+          "skillName": "SQL",
+          "category": "Languages",
+          "proficiency": "Intermediate",
+          "verified": false,
+          "source": "Self",
+          "confidenceScore": 0.9
+        }
+      ],
+      "projects": [
+        {
+          "id": "proj-1792611998245",
+          "title": "Predictive Attrition Pipeline",
+          "description": "Trained and evaluated classification models on tabular corporate telemetry data using PyTorch and Scikit-Learn.",
+          "technologies": [
+            "Python",
+            "Pandas",
+            "NumPy"
+          ]
+        }
+      ],
       "certifications": [],
       "completedRoadmapStepIds": []
     }

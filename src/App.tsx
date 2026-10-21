@@ -20,6 +20,7 @@ import { NewStudentModal } from './components/common/NewStudentModal';
 function MainApp() {
   const { user, loading, refreshUser } = useAuth();
   const [activeView, setActiveView] = useState('landing');
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [assessmentSkillId, setAssessmentSkillId] = useState<string | undefined>(undefined);
   const [isNewStudentModalOpen, setIsNewStudentModalOpen] = useState(false);
@@ -115,6 +116,7 @@ function MainApp() {
       case 'profile':
         return (
           <ProfileView
+            onNavigate={setActiveView}
             onOpenNewStudentModal={() => handleOpenNewStudentModal()}
             onStudentDeleted={async () => {
               await refreshUser();

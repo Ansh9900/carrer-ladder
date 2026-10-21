@@ -1282,7 +1282,9 @@
       ],
       "projects": [],
       "certifications": [],
-      "completedRoadmapStepIds": []
+      "completedRoadmapStepIds": [
+        "step-sk-typescript-1"
+      ]
     }
   ],
   "jobs": [
@@ -1425,6 +1427,27 @@
     }
   ],
   "applications": [
+    {
+      "id": "app-1792099237766",
+      "jobId": "job-1",
+      "studentId": "std-1792096998082",
+      "studentName": "ansh bansal",
+      "studentEmail": "anshbansal8788@gmail.com",
+      "studentDegree": "B.Tech in Computer Science & Engineering",
+      "studentInstitution": "chandigarh group of college , jhanjeri",
+      "appliedAt": "2026-10-15T21:20:37.766Z",
+      "status": "Applied",
+      "matchScore": 60,
+      "matchedSkills": [
+        "Python",
+        "RESTful APIs",
+        "SQL"
+      ],
+      "missingRequired": [
+        "PostgreSQL"
+      ],
+      "notes": "Direct submission via Career Ladder skill-verified profile"
+    },
     {
       "id": "app-1792097315115",
       "jobId": "job-2",

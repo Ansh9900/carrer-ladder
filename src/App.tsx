@@ -113,7 +113,15 @@ function MainApp() {
       case 'applications':
         return <ApplicationHistory onExploreJobs={() => setActiveView('jobs')} />;
       case 'profile':
-        return <ProfileView onOpenNewStudentModal={() => handleOpenNewStudentModal()} />;
+        return (
+          <ProfileView
+            onOpenNewStudentModal={() => handleOpenNewStudentModal()}
+            onStudentDeleted={async () => {
+              await refreshUser();
+              setActiveView('dashboard');
+            }}
+          />
+        );
       case 'industry':
       case 'industry-jobs':
       case 'industry-applicants':

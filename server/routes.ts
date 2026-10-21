@@ -215,10 +215,100 @@ apiRouter.post('/students/switch-active', (req, res) => {
   res.json({ success: true, student: targetStudent, user: targetUser });
 });
 
+// Delete candidate profile by ID
+apiRouter.delete('/students/:id', (req, res) => {
+  const { id } = req.params;
+  const store = db.get();
+
+  if (store.students.length <= 1) {
+    return res.status(400).json({
+      error: 'Cannot delete the only remaining candidate profile. At least one candidate profile must exist in the system.'
+    });
+  }
+
+  const targetStudent = store.students.find(s => s.id === id || s.userId === id);
+  if (!targetStudent) {
+    return res.status(404).json({ error: 'Candidate profile not found.' });
+  }
+
+  const targetUserId = targetStudent.userId;
+
+  // Remove student & user & associated applications and assessment results
+  db.update(s => {
+    s.students = s.students.filter(st => st.id !== targetStudent.id);
+    s.users = s.users.filter(u => u.id !== targetUserId);
+    s.applications = s.applications.filter(a => a.studentId !== targetStudent.id);
+    s.assessmentResults = s.assessmentResults.filter(r => r.studentId !== targetStudent.id);
+  });
+
+  invalidateStudentCaches(targetStudent.id);
+
+  // If the active user was this student, automatically switch to the first remaining student
+  let activeStudent = getActiveStudent();
+  if (currentUserId === targetUserId) {
+    const remainingStore = db.get();
+    const nextStudent = remainingStore.students[0];
+    if (nextStudent) {
+      currentUserId = nextStudent.userId;
+      activeStudent = nextStudent;
+      invalidateStudentCaches(nextStudent.id);
+    }
+  }
+
+  const activeUser = db.get().users.find(u => u.id === currentUserId) || db.get().users[0];
+
+  res.json({
+    success: true,
+    message: `Candidate profile for "${targetStudent.name}" has been deleted.`,
+    activeStudent,
+    user: activeUser,
+    remainingStudentsCount: db.get().students.length
+  });
+});
+
 // --- STUDENT PROFILE ---
 apiRouter.get('/student/profile', (req, res) => {
   const student = getActiveStudent();
   res.json({ student });
+});
+
+apiRouter.delete('/student/profile', (req, res) => {
+  const activeStudent = getActiveStudent();
+  const store = db.get();
+
+  if (store.students.length <= 1) {
+    return res.status(400).json({
+      error: 'Cannot delete the only remaining candidate profile. At least one candidate profile must exist in the system.'
+    });
+  }
+
+  const targetUserId = activeStudent.userId;
+
+  db.update(s => {
+    s.students = s.students.filter(st => st.id !== activeStudent.id);
+    s.users = s.users.filter(u => u.id !== targetUserId);
+    s.applications = s.applications.filter(a => a.studentId !== activeStudent.id);
+    s.assessmentResults = s.assessmentResults.filter(r => r.studentId !== activeStudent.id);
+  });
+
+  invalidateStudentCaches(activeStudent.id);
+
+  const remainingStore = db.get();
+  const nextStudent = remainingStore.students[0];
+  if (nextStudent) {
+    currentUserId = nextStudent.userId;
+    invalidateStudentCaches(nextStudent.id);
+  }
+
+  const activeUser = db.get().users.find(u => u.id === currentUserId) || db.get().users[0];
+
+  res.json({
+    success: true,
+    message: `Candidate profile for "${activeStudent.name}" has been deleted.`,
+    activeStudent: nextStudent,
+    user: activeUser,
+    remainingStudentsCount: db.get().students.length
+  });
 });
 
 apiRouter.put('/student/profile', (req, res) => {

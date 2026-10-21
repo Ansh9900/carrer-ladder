@@ -108,6 +108,30 @@ export const api = {
       body: JSON.stringify({ studentId })
     });
   },
+  deleteStudent: async (studentId: string) => {
+    clearClientCache();
+    return fetchJSON<{
+      success: boolean;
+      message: string;
+      activeStudent: StudentProfile;
+      user: User;
+      remainingStudentsCount: number;
+    }>(`/api/students/${studentId}`, {
+      method: 'DELETE'
+    });
+  },
+  deleteActiveStudent: async () => {
+    clearClientCache();
+    return fetchJSON<{
+      success: boolean;
+      message: string;
+      activeStudent: StudentProfile;
+      user: User;
+      remainingStudentsCount: number;
+    }>('/api/student/profile', {
+      method: 'DELETE'
+    });
+  },
 
   // Student Profile
   getStudentProfile: () => fetchCached<{ student: StudentProfile }>('/api/student/profile', 30000),

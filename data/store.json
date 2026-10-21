@@ -1,13 +1,6 @@
 {
   "users": [
     {
-      "id": "usr-student-1",
-      "email": "aanya.sharma@iitd.ac.in",
-      "name": "Aanya Sharma",
-      "role": "student",
-      "avatarUrl": "/src/assets/images/avatar_student_lead_1792012204911.jpg"
-    },
-    {
       "id": "usr-industry-1",
       "email": "vikram.m@innovatetech.in",
       "name": "Vikram Malhotra",
@@ -37,14 +30,6 @@
       "role": "student",
       "avatarUrl": "/src/assets/images/avatar_student_lead_1792012204911.jpg",
       "institutionId": "NIT Surathkal"
-    },
-    {
-      "id": "usr-student-1792096998082",
-      "email": "anshbansal8788@gmail.com",
-      "name": "ansh bansal",
-      "role": "student",
-      "avatarUrl": "/src/assets/images/avatar_student_lead_1792012204911.jpg",
-      "institutionId": "chandigarh group of college , jhanjeri"
     }
   ],
   "skills": [
@@ -858,129 +843,6 @@
   ],
   "students": [
     {
-      "id": "std-aanya",
-      "userId": "usr-student-1",
-      "name": "Aanya Sharma",
-      "email": "aanya.sharma@iitd.ac.in",
-      "phone": "+91 98765 43210",
-      "institution": "Indian Institute of Technology Delhi (IIT Delhi)",
-      "degree": "B.Tech Computer Science & Engineering",
-      "department": "Computer Science",
-      "graduationYear": 2026,
-      "cgpa": 8.85,
-      "location": "New Delhi / Bengaluru",
-      "targetOccupationId": "occ-backend-dev",
-      "completedRoadmapStepIds": [
-        "step-docker-1",
-        "step-docker-2"
-      ],
-      "skills": [
-        {
-          "skillId": "sk-python",
-          "skillName": "Python",
-          "category": "Languages",
-          "proficiency": "Advanced",
-          "verified": true,
-          "source": "Assessment",
-          "verifiedScore": 92,
-          "confidenceScore": 0.95,
-          "extractedFromText": "3 years Python development building REST services and algorithmic problem solving"
-        },
-        {
-          "skillId": "sk-sql",
-          "skillName": "SQL",
-          "category": "Languages",
-          "proficiency": "Intermediate",
-          "verified": true,
-          "source": "Assessment",
-          "verifiedScore": 84,
-          "confidenceScore": 0.9,
-          "extractedFromText": "Wrote complex joins and query optimizations for PostgreSQL"
-        },
-        {
-          "skillId": "sk-postgresql",
-          "skillName": "PostgreSQL",
-          "category": "Database",
-          "proficiency": "Intermediate",
-          "verified": false,
-          "source": "Resume",
-          "confidenceScore": 0.88,
-          "extractedFromText": "Implemented relational schema in PostgreSQL for e-commerce project"
-        },
-        {
-          "skillId": "sk-git",
-          "skillName": "Git & GitHub",
-          "category": "Core & Architecture",
-          "proficiency": "Advanced",
-          "verified": false,
-          "source": "Resume",
-          "confidenceScore": 0.94,
-          "extractedFromText": "Active open-source contributor managing feature branches and pull requests"
-        },
-        {
-          "skillId": "sk-javascript",
-          "skillName": "JavaScript",
-          "category": "Languages",
-          "proficiency": "Intermediate",
-          "verified": false,
-          "source": "Resume",
-          "confidenceScore": 0.82,
-          "extractedFromText": "Created frontend interactive scripts and ES6 modules"
-        },
-        {
-          "skillId": "sk-react",
-          "skillName": "React",
-          "category": "Frontend",
-          "proficiency": "Beginner",
-          "verified": false,
-          "source": "Self",
-          "confidenceScore": 0.7
-        },
-        {
-          "skillId": "sk-problemsolving",
-          "skillName": "Analytical Problem Solving",
-          "category": "Soft Skills",
-          "proficiency": "Advanced",
-          "verified": true,
-          "source": "Assessment",
-          "verifiedScore": 95
-        }
-      ],
-      "projects": [
-        {
-          "id": "proj-1",
-          "title": "Campus Food Ordering Microservice",
-          "description": "Engineered an asynchronous high-throughput backend using Python and PostgreSQL capable of handling 200+ concurrent cafeteria requests.",
-          "technologies": [
-            "Python",
-            "SQL",
-            "PostgreSQL",
-            "Git & GitHub"
-          ],
-          "link": "https://github.com/aanya-sharma/campus-bite-service"
-        },
-        {
-          "id": "proj-2",
-          "title": "Student Placement Tracker Dashboard",
-          "description": "Built a web analytics panel aggregating campus recruitment records with data validation and report exporting.",
-          "technologies": [
-            "JavaScript",
-            "React",
-            "HTML5",
-            "CSS3"
-          ]
-        }
-      ],
-      "certifications": [
-        {
-          "id": "cert-1",
-          "name": "Meta Database Engineer Professional Certificate",
-          "issuer": "Coursera / Meta",
-          "year": 2025
-        }
-      ]
-    },
-    {
       "id": "std-rohan",
       "userId": "usr-student-2",
       "name": "Rohan Verma",
@@ -1175,116 +1037,6 @@
       "projects": [],
       "certifications": [],
       "completedRoadmapStepIds": []
-    },
-    {
-      "id": "std-1792096998082",
-      "userId": "usr-student-1792096998082",
-      "name": "ansh bansal",
-      "email": "anshbansal8788@gmail.com",
-      "phone": "+91 98765 00000",
-      "institution": "chandigarh group of college , jhanjeri",
-      "degree": "B.Tech in Computer Science & Engineering",
-      "department": "Computer Science",
-      "graduationYear": 2026,
-      "cgpa": 8.91,
-      "location": "Bengaluru / Hybrid",
-      "targetOccupationId": "occ-fullstack",
-      "skills": [
-        {
-          "skillId": "sk-python",
-          "skillName": "Python",
-          "category": "Languages",
-          "proficiency": "Intermediate",
-          "verified": false,
-          "source": "Resume",
-          "confidenceScore": 0.9,
-          "extractedFromText": "First-year student with hands-on experience building full-stack applications using JavaScript, Node.js, and MongoDB, along with AI API integ"
-        },
-        {
-          "skillId": "sk-sql",
-          "skillName": "SQL",
-          "category": "Languages",
-          "proficiency": "Intermediate",
-          "verified": false,
-          "source": "Self",
-          "confidenceScore": 0.9
-        },
-        {
-          "skillId": "sk-git",
-          "skillName": "Git & GitHub",
-          "category": "Core & Architecture",
-          "proficiency": "Advanced",
-          "verified": false,
-          "source": "Resume",
-          "confidenceScore": 0.9,
-          "extractedFromText": "First-year student with hands-on experience building full-stack applications using JavaScript, Node.js, and MongoDB, along with AI API integ"
-        },
-        {
-          "skillId": "sk-custom-1792097118861-ywfs5c",
-          "skillName": "JavaScript",
-          "category": "Languages",
-          "proficiency": "Advanced",
-          "verified": false,
-          "source": "Resume",
-          "confidenceScore": 0.88,
-          "extractedFromText": "First-year student with hands-on experience building full-stack applications using JavaScript, Node.js, and MongoDB, along with AI API integ"
-        },
-        {
-          "skillId": "sk-custom-1792097118861-a8m304",
-          "skillName": "Java",
-          "category": "Languages",
-          "proficiency": "Intermediate",
-          "verified": false,
-          "source": "Resume",
-          "confidenceScore": 0.88,
-          "extractedFromText": "First-year student with hands-on experience building full-stack applications using JavaScript, Node.js, and MongoDB, along with AI API integ"
-        },
-        {
-          "skillId": "sk-custom-1792097118861-e79asf",
-          "skillName": "Node.js",
-          "category": "Backend",
-          "proficiency": "Advanced",
-          "verified": false,
-          "source": "Resume",
-          "confidenceScore": 0.88,
-          "extractedFromText": "First-year student with hands-on experience building full-stack applications using JavaScript, Node.js, and MongoDB, along with AI API integ"
-        },
-        {
-          "skillId": "sk-custom-1792097118861-00uqc7",
-          "skillName": "Express.js",
-          "category": "Backend",
-          "proficiency": "Advanced",
-          "verified": false,
-          "source": "Resume",
-          "confidenceScore": 0.88,
-          "extractedFromText": "First-year student with hands-on experience building full-stack applications using JavaScript, Node.js, and MongoDB, along with AI API integ"
-        },
-        {
-          "skillId": "sk-custom-1792097118861-tyyez5",
-          "skillName": "RESTful APIs",
-          "category": "Backend",
-          "proficiency": "Advanced",
-          "verified": false,
-          "source": "Resume",
-          "confidenceScore": 0.88,
-          "extractedFromText": "First-year student with hands-on experience building full-stack applications using JavaScript, Node.js, and MongoDB, along with AI API integ"
-        },
-        {
-          "skillId": "sk-custom-1792097118861-b71dyk",
-          "skillName": "MongoDB",
-          "category": "Database",
-          "proficiency": "Advanced",
-          "verified": false,
-          "source": "Resume",
-          "confidenceScore": 0.88,
-          "extractedFromText": "First-year student with hands-on experience building full-stack applications using JavaScript, Node.js, and MongoDB, along with AI API integ"
-        }
-      ],
-      "projects": [],
-      "certifications": [],
-      "completedRoadmapStepIds": [
-        "step-sk-typescript-1"
-      ]
     }
   ],
   "jobs": [
@@ -1426,72 +1178,7 @@
       "active": true
     }
   ],
-  "applications": [
-    {
-      "id": "app-1792099237766",
-      "jobId": "job-1",
-      "studentId": "std-1792096998082",
-      "studentName": "ansh bansal",
-      "studentEmail": "anshbansal8788@gmail.com",
-      "studentDegree": "B.Tech in Computer Science & Engineering",
-      "studentInstitution": "chandigarh group of college , jhanjeri",
-      "appliedAt": "2026-10-15T21:20:37.766Z",
-      "status": "Applied",
-      "matchScore": 60,
-      "matchedSkills": [
-        "Python",
-        "RESTful APIs",
-        "SQL"
-      ],
-      "missingRequired": [
-        "PostgreSQL"
-      ],
-      "notes": "Direct submission via Career Ladder skill-verified profile"
-    },
-    {
-      "id": "app-1792097315115",
-      "jobId": "job-2",
-      "studentId": "std-1792096998082",
-      "studentName": "ansh bansal",
-      "studentEmail": "anshbansal8788@gmail.com",
-      "studentDegree": "B.Tech in Computer Science & Engineering",
-      "studentInstitution": "chandigarh group of college , jhanjeri",
-      "appliedAt": "2026-10-15T20:48:35.115Z",
-      "status": "Applied",
-      "matchScore": 64,
-      "matchedSkills": [
-        "Python",
-        "RESTful APIs",
-        "SQL",
-        "Git & GitHub"
-      ],
-      "missingRequired": [
-        "Docker"
-      ],
-      "notes": "Direct submission via Career Ladder skill-verified profile"
-    },
-    {
-      "id": "app-1",
-      "jobId": "job-1",
-      "studentId": "std-aanya",
-      "studentName": "Aanya Sharma",
-      "studentEmail": "aanya.sharma@iitd.ac.in",
-      "studentDegree": "B.Tech Computer Science & Engineering",
-      "studentInstitution": "IIT Delhi",
-      "appliedAt": "2026-10-11T10:30:00Z",
-      "status": "Shortlisted",
-      "matchScore": 88,
-      "matchedSkills": [
-        "Python",
-        "SQL",
-        "PostgreSQL"
-      ],
-      "missingRequired": [
-        "RESTful APIs"
-      ],
-      "notes": "Strong algorithmic foundation (Python assessment verified 92%). Scheduled for technical interview."
-    }
-  ],
+  "applications": [],
   "assessments": [
     {
       "id": "asm-python",
@@ -1654,50 +1341,7 @@
       ]
     }
   ],
-  "assessmentResults": [
-    {
-      "id": "res-1",
-      "studentId": "std-aanya",
-      "skillId": "sk-python",
-      "skillName": "Python",
-      "score": 92,
-      "passed": true,
-      "takenAt": "2026-10-01T14:20:00Z",
-      "answers": {
-        "py-q1": 0,
-        "py-q2": 1,
-        "py-q3": 2,
-        "py-q4": 1,
-        "py-q5": 1
-      }
-    },
-    {
-      "id": "res-2",
-      "studentId": "std-aanya",
-      "skillId": "sk-sql",
-      "skillName": "SQL",
-      "score": 84,
-      "passed": true,
-      "takenAt": "2026-10-04T11:00:00Z",
-      "answers": {
-        "sql-q1": 0,
-        "sql-q2": 0,
-        "sql-q3": 0
-      }
-    },
-    {
-      "id": "res-1792097246962",
-      "studentId": "std-1792096998082",
-      "skillId": "sk-python",
-      "skillName": "Python",
-      "score": 20,
-      "passed": false,
-      "takenAt": "2026-10-15T20:47:26.962Z",
-      "answers": {
-        "py-q1": 0
-      }
-    }
-  ],
+  "assessmentResults": [],
   "learningResources": [
     {
       "id": "res-docker-guide",

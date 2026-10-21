@@ -1,18 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { StudentProfile, Occupation } from '../../types';
-import { UserCircle, Save, CheckCircle2, Plus, Trash2, Award, Briefcase, GraduationCap, UserPlus } from 'lucide-react';
+import {
+  UserCircle,
+  Save,
+  CheckCircle2,
+  Plus,
+  Trash2,
+  Award,
+  Briefcase,
+  GraduationCap,
+  UserPlus,
+  AlertTriangle,
+  Loader2
+} from 'lucide-react';
 
 interface ProfileViewProps {
   onOpenNewStudentModal?: () => void;
+  onStudentDeleted?: () => void;
 }
 
-export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenNewStudentModal }) => {
+export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenNewStudentModal, onStudentDeleted }) => {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [occupations, setOccupations] = useState<Occupation[]>([]);
+  const [totalStudentsCount, setTotalStudentsCount] = useState<number>(1);
   const [isSaving, setIsSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Deletion modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // New project state
   const [newProjectTitle, setNewProjectTitle] = useState('');
@@ -28,12 +47,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenNewStudentModal 
     async function load() {
       try {
         setLoading(true);
-        const [profRes, occRes] = await Promise.all([
+        const [profRes, occRes, studentsRes] = await Promise.all([
           api.getStudentProfile(),
-          api.getOccupations()
+          api.getOccupations(),
+          api.getStudents()
         ]);
         setProfile(profRes.student);
         setOccupations(occRes.occupations);
+        setTotalStudentsCount(studentsRes.students?.length || 1);
       } catch (e) {
         console.error('Failed to load profile:', e);
       } finally {
@@ -42,6 +63,24 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenNewStudentModal 
     }
     load();
   }, []);
+
+  const handleDeleteProfile = async () => {
+    if (!profile) return;
+    try {
+      setIsDeleting(true);
+      setDeleteError(null);
+      await api.deleteStudent(profile.id);
+      setShowDeleteModal(false);
+      if (onStudentDeleted) {
+        onStudentDeleted();
+      }
+    } catch (err: any) {
+      console.error('Failed to delete student profile:', err);
+      setDeleteError(err.message || 'Failed to delete candidate profile.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,6 +194,24 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenNewStudentModal 
           >
             <Save className="w-4 h-4" />
             <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setDeleteError(null);
+              setShowDeleteModal(true);
+            }}
+            disabled={totalStudentsCount <= 1}
+            className={`px-3.5 py-2.5 rounded-lg text-xs font-semibold border transition-colors flex items-center gap-1.5 ${
+              totalStudentsCount <= 1
+                ? 'bg-slate-900/40 border-slate-800 text-slate-600 cursor-not-allowed opacity-60'
+                : 'bg-rose-950/30 hover:bg-rose-900/50 border-rose-900/50 text-rose-300 hover:text-white'
+            }`}
+            title={totalStudentsCount <= 1 ? "Cannot delete the only remaining profile" : `Delete active profile (${profile.name})`}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Delete Profile</span>
           </button>
         </div>
       </div>
@@ -385,7 +442,123 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenNewStudentModal 
             </button>
           </div>
         </div>
+
+        {/* Danger Zone: Permanent Candidate Profile Deletion */}
+        <div className="bg-rose-950/20 border border-rose-900/40 rounded-xl p-6 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-rose-300 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-400" />
+                <span>Delete Active Candidate Profile</span>
+              </h4>
+              <p className="text-xs text-slate-400 max-w-xl">
+                Permanently delete <strong className="text-slate-200">{profile.name}</strong> from the Career Ladder platform. All verified skills, assessment badges, application records, and roadmap progress will be erased.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteError(null);
+                setShowDeleteModal(true);
+              }}
+              disabled={totalStudentsCount <= 1}
+              className={`px-4 py-2.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shrink-0 ${
+                totalStudentsCount <= 1
+                  ? 'bg-slate-900/40 border border-slate-800 text-slate-600 cursor-not-allowed opacity-60'
+                  : 'bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 border border-rose-700/60'
+              }`}
+              title={totalStudentsCount <= 1 ? "Cannot delete the only remaining candidate profile" : "Delete this candidate profile"}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Candidate</span>
+            </button>
+          </div>
+          {totalStudentsCount <= 1 && (
+            <p className="text-[11px] text-slate-500 italic">
+              Note: At least one student candidate profile must exist in the platform. Register another student before deleting this one.
+            </p>
+          )}
+        </div>
       </form>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && profile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-950/60 border border-rose-900/60 flex items-center justify-center text-rose-400 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Delete Candidate Profile</h3>
+                <p className="text-xs text-slate-400">Permanently remove this candidate record</p>
+              </div>
+            </div>
+
+            {deleteError && (
+              <div className="p-3 bg-rose-950/50 border border-rose-900/60 rounded-xl text-xs text-rose-300">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3.5 text-xs space-y-2">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Candidate Name:</span>
+                <span className="font-semibold text-white">{profile.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Email:</span>
+                <span className="font-mono text-slate-300">{profile.email}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Institution:</span>
+                <span className="text-slate-300">{profile.institution}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Tracked Skills:</span>
+                <span className="text-slate-300">{profile.skills.length} skills</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Are you sure you want to permanently delete <strong className="text-slate-200">{profile.name}</strong>? This action cannot be undone. The system will automatically select the next available candidate.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteError(null);
+                }}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleDeleteProfile}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Yes, Delete Candidate</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

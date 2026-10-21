@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
 import { Occupation, SkillGapAnalysis, StudentProfile } from '../../types';
 import { SkillGraph } from '../common/SkillGraph';
@@ -14,7 +14,8 @@ import {
   Briefcase,
   Layers,
   Zap,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
 
 interface SkillGapAnalyzerProps {
@@ -27,24 +28,30 @@ export const SkillGapAnalyzer: React.FC<SkillGapAnalyzerProps> = ({ onNavigateTo
   const [gapData, setGapData] = useState<SkillGapAnalysis | null>(null);
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [switchingRole, setSwitchingRole] = useState(false);
   const [showFormulaModal, setShowFormulaModal] = useState(false);
+
+  // In-memory cache for fast tab-switching and role-comparing without server latency
+  const occGapCache = useRef<Record<string, SkillGapAnalysis>>({});
 
   useEffect(() => {
     async function init() {
       try {
         setLoading(true);
-        const [occRes, profRes] = await Promise.all([
+        // Parallel execution: fetch occupations, student profile, and skill gap simultaneously
+        const [occRes, profRes, gapRes] = await Promise.all([
           api.getOccupations(),
-          api.getStudentProfile()
+          api.getStudentProfile(),
+          api.getSkillGap()
         ]);
+
         setOccupations(occRes.occupations);
         setStudentProfile(profRes.student);
-
-        const defaultId = profRes.student.targetOccupationId || occRes.occupations[0]?.id;
-        setSelectedOccupationId(defaultId);
-
-        const gapRes = await api.getSkillGap(defaultId);
         setGapData(gapRes);
+
+        const currentOccId = gapRes.targetOccupation.id || profRes.student.targetOccupationId || occRes.occupations[0]?.id;
+        setSelectedOccupationId(currentOccId);
+        occGapCache.current[currentOccId] = gapRes;
       } catch (err) {
         console.error('Failed to load skill gap data:', err);
       } finally {
@@ -56,16 +63,24 @@ export const SkillGapAnalyzer: React.FC<SkillGapAnalyzerProps> = ({ onNavigateTo
 
   const handleOccupationChange = async (occId: string) => {
     setSelectedOccupationId(occId);
+
+    // Instant zero-latency render if this occupation was previously analyzed
+    if (occGapCache.current[occId]) {
+      setGapData(occGapCache.current[occId]);
+      api.updateStudentProfile({ targetOccupationId: occId }).catch(() => {});
+      return;
+    }
+
     try {
-      setLoading(true);
+      setSwitchingRole(true);
       const res = await api.getSkillGap(occId);
+      occGapCache.current[occId] = res;
       setGapData(res);
-      // update student's target role in profile
-      await api.updateStudentProfile({ targetOccupationId: occId });
+      api.updateStudentProfile({ targetOccupationId: occId }).catch(() => {});
     } catch (e) {
       console.error('Failed to recompute gap for occupation:', e);
     } finally {
-      setLoading(false);
+      setSwitchingRole(false);
     }
   };
 
@@ -113,6 +128,7 @@ export const SkillGapAnalyzer: React.FC<SkillGapAnalyzerProps> = ({ onNavigateTo
                 </option>
               ))}
             </select>
+            {switchingRole && <Loader2 className="w-3.5 h-3.5 text-indigo-400 animate-spin shrink-0" />}
           </div>
 
           <button

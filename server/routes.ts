@@ -7,6 +7,15 @@ export const apiRouter = express.Router();
 // Active session state (in memory for current user session, defaults to Aanya Sharma student)
 let currentUserId = 'usr-student-1';
 
+// --- HEALTH CHECK ---
+apiRouter.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    uptime: Math.round(process.uptime()),
+    timestamp: new Date().toISOString()
+  });
+});
+
 // --- AUTH & DEMO SWITCH ---
 apiRouter.get('/auth/me', (req, res) => {
   const store = db.get();
@@ -59,6 +68,7 @@ apiRouter.get('/skills', (req, res) => {
 
 // --- OCCUPATIONS ---
 apiRouter.get('/occupations', (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
   const occupations = db.get().occupations;
   res.json({ occupations });
 });
@@ -200,6 +210,7 @@ apiRouter.post('/students/switch-active', (req, res) => {
     return res.status(404).json({ error: 'Student profile not found.' });
   }
   currentUserId = targetStudent.userId;
+  invalidateStudentCaches(targetStudent.id);
   const targetUser = store.users.find(u => u.id === currentUserId) || store.users[0];
   res.json({ success: true, student: targetStudent, user: targetUser });
 });
@@ -227,6 +238,7 @@ apiRouter.put('/student/profile', (req, res) => {
     }
   });
 
+  invalidateStudentCaches(activeStudent.id);
   res.json({ success: true, student: getActiveStudent() });
 });
 
@@ -267,6 +279,7 @@ apiRouter.post('/student/skills', (req, res) => {
     }
   });
 
+  invalidateStudentCaches(activeStudent.id);
   res.json({ success: true, skills: getActiveStudent().skills });
 });
 
@@ -285,6 +298,7 @@ apiRouter.put('/student/skills/:skillId', (req, res) => {
     }
   });
 
+  invalidateStudentCaches(activeStudent.id);
   res.json({ success: true, skills: getActiveStudent().skills });
 });
 
@@ -298,6 +312,7 @@ apiRouter.delete('/student/skills/:skillId', (req, res) => {
     st.skills = st.skills.filter(sk => sk.skillId !== skillId);
   });
 
+  invalidateStudentCaches(activeStudent.id);
   res.json({ success: true, skills: getActiveStudent().skills });
 });
 
@@ -334,121 +349,280 @@ apiRouter.post('/student/skills/batch', (req, res) => {
     }
   });
 
+  invalidateStudentCaches(activeStudent.id);
   res.json({ success: true, skills: getActiveStudent().skills });
 });
 
-// --- SKILL-GAP ENGINE ---
-apiRouter.get('/student/skill-gap', async (req, res) => {
-  try {
-    const store = db.get();
-    const student = getActiveStudent();
-    const occupationId = (req.query.occupationId as string) || student.targetOccupationId || store.occupations[0].id;
-    const occupation = store.occupations.find(o => o.id === occupationId) || store.occupations[0];
+// --- SKILL-GAP ENGINE & CACHING ---
+interface CachedSkillGap {
+  timestamp: number;
+  data: any;
+}
 
-    // Compute deterministic match
-    const studentSkillNamesLower = new Set(student.skills.map(s => s.skillName.toLowerCase()));
+const skillGapCache = new Map<string, CachedSkillGap>();
+const SKILL_GAP_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-    // Required skills coverage
-    let matchedReqWeight = 0;
-    let totalReqWeight = 0;
-    const matchedRequired: Array<{ skillId: string; skillName: string; weight: number; proficiency: string; verified: boolean }> = [];
-    const missingRequired: Array<{ skillId: string; skillName: string; weight: number; priority: 'High' | 'Critical' }> = [];
-
-    for (const reqSkill of occupation.requiredSkills) {
-      totalReqWeight += reqSkill.weight;
-      const isMatched = studentSkillNamesLower.has(reqSkill.skillName.toLowerCase());
-      if (isMatched) {
-        matchedReqWeight += reqSkill.weight;
-        const sObj = student.skills.find(s => s.skillName.toLowerCase() === reqSkill.skillName.toLowerCase());
-        matchedRequired.push({
-          ...reqSkill,
-          proficiency: sObj?.proficiency || 'Intermediate',
-          verified: sObj?.verified || false
-        });
-      } else {
-        missingRequired.push({
-          ...reqSkill,
-          priority: reqSkill.weight >= 0.9 ? 'Critical' : 'High'
-        });
+export function invalidateStudentCaches(studentId?: string) {
+  if (!studentId) {
+    skillGapCache.clear();
+  } else {
+    for (const key of Array.from(skillGapCache.keys())) {
+      if (key.startsWith(`${studentId}::`)) {
+        skillGapCache.delete(key);
       }
     }
+  }
+}
 
-    // Preferred skills coverage
-    let matchedPrefWeight = 0;
-    let totalPrefWeight = 0;
-    const matchedPreferred: Array<{ skillId: string; skillName: string; weight: number }> = [];
-    const missingPreferred: Array<{ skillId: string; skillName: string; weight: number; priority: 'Medium' }> = [];
+export async function computeSkillGap(studentId?: string, occupationIdInput?: string, forceFresh = false) {
+  const store = db.get();
+  const student = studentId
+    ? store.students.find(s => s.id === studentId || s.userId === studentId) || getActiveStudent()
+    : getActiveStudent();
+  const occupationId = occupationIdInput || student.targetOccupationId || store.occupations[0].id;
+  const occupation = store.occupations.find(o => o.id === occupationId) || store.occupations[0];
 
-    for (const prefSkill of occupation.preferredSkills) {
-      totalPrefWeight += prefSkill.weight;
-      const isMatched = studentSkillNamesLower.has(prefSkill.skillName.toLowerCase());
-      if (isMatched) {
-        matchedPrefWeight += prefSkill.weight;
-        matchedPreferred.push(prefSkill);
-      } else {
-        missingPreferred.push({
-          ...prefSkill,
-          priority: 'Medium'
-        });
-      }
+  const cacheKey = `${student.id}::${occupation.id}::${student.skills.map(s => `${s.skillId}:${s.verified}`).sort().join(',')}`;
+
+  if (!forceFresh) {
+    const cached = skillGapCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < SKILL_GAP_CACHE_TTL_MS)) {
+      return cached.data;
     }
+  }
 
-    const requiredCoveragePct = totalReqWeight > 0 ? Math.round((matchedReqWeight / totalReqWeight) * 100) : 0;
-    const preferredCoveragePct = totalPrefWeight > 0 ? Math.round((matchedPrefWeight / totalPrefWeight) * 100) : 0;
-    const overallReadinessScore = Math.round((0.75 * requiredCoveragePct) + (0.25 * preferredCoveragePct));
+  // Compute deterministic match
+  const studentSkillNamesLower = new Set(student.skills.map(s => s.skillName.toLowerCase()));
 
-    // Identify Bridge Skills
-    // If student has a foundation skill, it bridges to missing skills
-    const bridgeConnections: Array<{
-      currentSkill: string;
-      bridgesTo: string;
-      reason: string;
-    }> = [];
+  // Required skills coverage
+  let matchedReqWeight = 0;
+  let totalReqWeight = 0;
+  const matchedRequired: Array<{ skillId: string; skillName: string; weight: number; proficiency: string; verified: boolean }> = [];
+  const missingRequired: Array<{ skillId: string; skillName: string; weight: number; priority: 'High' | 'Critical' }> = [];
 
-    if (occupation.bridgeSkills) {
-      for (const [sourceSkillId, targetSkillIds] of Object.entries(occupation.bridgeSkills)) {
-        const sourceSkill = store.skills.find(s => s.id === sourceSkillId);
-        if (sourceSkill && studentSkillNamesLower.has(sourceSkill.name.toLowerCase())) {
-          for (const targetId of targetSkillIds) {
-            const targetSkill = store.skills.find(s => s.id === targetId);
-            if (targetSkill && !studentSkillNamesLower.has(targetSkill.name.toLowerCase())) {
-              bridgeConnections.push({
-                currentSkill: sourceSkill.name,
-                bridgesTo: targetSkill.name,
-                reason: `Your foundation in ${sourceSkill.name} significantly reduces the learning curve for ${targetSkill.name}.`
-              });
-            }
+  for (const reqSkill of occupation.requiredSkills) {
+    totalReqWeight += reqSkill.weight;
+    const isMatched = studentSkillNamesLower.has(reqSkill.skillName.toLowerCase());
+    if (isMatched) {
+      matchedReqWeight += reqSkill.weight;
+      const sObj = student.skills.find(s => s.skillName.toLowerCase() === reqSkill.skillName.toLowerCase());
+      matchedRequired.push({
+        ...reqSkill,
+        proficiency: sObj?.proficiency || 'Intermediate',
+        verified: sObj?.verified || false
+      });
+    } else {
+      missingRequired.push({
+        ...reqSkill,
+        priority: reqSkill.weight >= 0.9 ? 'Critical' : 'High'
+      });
+    }
+  }
+
+  // Preferred skills coverage
+  let matchedPrefWeight = 0;
+  let totalPrefWeight = 0;
+  const matchedPreferred: Array<{ skillId: string; skillName: string; weight: number }> = [];
+  const missingPreferred: Array<{ skillId: string; skillName: string; weight: number; priority: 'Medium' }> = [];
+
+  for (const prefSkill of occupation.preferredSkills) {
+    totalPrefWeight += prefSkill.weight;
+    const isMatched = studentSkillNamesLower.has(prefSkill.skillName.toLowerCase());
+    if (isMatched) {
+      matchedPrefWeight += prefSkill.weight;
+      matchedPreferred.push(prefSkill);
+    } else {
+      missingPreferred.push({
+        ...prefSkill,
+        priority: 'Medium'
+      });
+    }
+  }
+
+  const requiredCoveragePct = totalReqWeight > 0 ? Math.round((matchedReqWeight / totalReqWeight) * 100) : 0;
+  const preferredCoveragePct = totalPrefWeight > 0 ? Math.round((matchedPrefWeight / totalPrefWeight) * 100) : 0;
+  const overallReadinessScore = Math.round((0.75 * requiredCoveragePct) + (0.25 * preferredCoveragePct));
+
+  // Identify Bridge Skills
+  const bridgeConnections: Array<{
+    currentSkill: string;
+    bridgesTo: string;
+    reason: string;
+  }> = [];
+
+  if (occupation.bridgeSkills) {
+    for (const [sourceSkillId, targetSkillIds] of Object.entries(occupation.bridgeSkills)) {
+      const sourceSkill = store.skills.find(s => s.id === sourceSkillId);
+      if (sourceSkill && studentSkillNamesLower.has(sourceSkill.name.toLowerCase())) {
+        for (const targetId of targetSkillIds) {
+          const targetSkill = store.skills.find(s => s.id === targetId);
+          if (targetSkill && !studentSkillNamesLower.has(targetSkill.name.toLowerCase())) {
+            bridgeConnections.push({
+              currentSkill: sourceSkill.name,
+              bridgesTo: targetSkill.name,
+              reason: `Your foundation in ${sourceSkill.name} significantly reduces the learning curve for ${targetSkill.name}.`
+            });
           }
         }
       }
     }
+  }
 
-    // AI Strategic Guidance
-    const aiGuidance = await generateSkillGapGuidance({
-      targetOccupation: occupation.title,
-      matchedSkills: matchedRequired.map(m => m.skillName),
-      missingRequired: missingRequired.map(m => m.skillName),
-      missingPreferred: missingPreferred.map(m => m.skillName),
-      overallReadiness: overallReadinessScore
+  // AI Strategic Guidance (fast & cached, timeout protected)
+  const aiGuidance = await generateSkillGapGuidance({
+    targetOccupation: occupation.title,
+    matchedSkills: matchedRequired.map(m => m.skillName),
+    missingRequired: missingRequired.map(m => m.skillName),
+    missingPreferred: missingPreferred.map(m => m.skillName),
+    overallReadiness: overallReadinessScore
+  });
+
+  const result = {
+    targetOccupation: occupation,
+    requiredCoveragePct,
+    preferredCoveragePct,
+    overallReadinessScore,
+    matchedRequired,
+    missingRequired,
+    matchedPreferred,
+    missingPreferred,
+    bridgeConnections,
+    aiGuidance,
+    calculationFormula: {
+      formulaText: "Overall Readiness = (0.75 × Required Coverage) + (0.25 × Preferred Coverage)",
+      requiredCoverageFormula: "Σ(Matched Required Weights) / Σ(Total Required Weights)",
+      preferredCoverageFormula: "Σ(Matched Preferred Weights) / Σ(Total Preferred Weights)"
+    }
+  };
+
+  skillGapCache.set(cacheKey, { timestamp: Date.now(), data: result });
+  return result;
+}
+
+// Single-flight unified dashboard summary for near-instant rendering on free Render servers
+apiRouter.get('/student/dashboard-summary', async (req, res) => {
+  try {
+    const store = db.get();
+    const student = getActiveStudent();
+    const studentSkillsLower = new Set(student.skills.map(s => s.skillName.toLowerCase()));
+
+    // 1. Skill gap calculation
+    const gapData = await computeSkillGap(student.id, student.targetOccupationId);
+
+    // 2. Pre-calculated Top 3 matching jobs
+    const enrichedJobs = store.jobs
+      .filter(j => j.active)
+      .map(job => {
+        const matchedRequired = job.requiredSkills.filter(s => studentSkillsLower.has(s.toLowerCase()));
+        const missingRequired = job.requiredSkills.filter(s => !studentSkillsLower.has(s.toLowerCase()));
+        const matchedPreferred = job.preferredSkills.filter(s => studentSkillsLower.has(s.toLowerCase()));
+        
+        const reqScore = job.requiredSkills.length > 0 ? (matchedRequired.length / job.requiredSkills.length) * 80 : 80;
+        const prefScore = job.preferredSkills.length > 0 ? (matchedPreferred.length / job.preferredSkills.length) * 20 : 20;
+        const matchScore = Math.min(100, Math.round(reqScore + prefScore));
+        const existingApp = store.applications.find(a => a.jobId === job.id && a.studentId === student.id);
+
+        return {
+          ...job,
+          matchScore,
+          matchedSkills: matchedRequired,
+          missingRequired,
+          applied: !!existingApp,
+          applicationStatus: existingApp?.status
+        };
+      })
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, 3);
+
+    // 3. Student Applications
+    const studentApps = store.applications
+      .filter(a => a.studentId === student.id)
+      .map(app => {
+        const job = store.jobs.find(j => j.id === app.jobId);
+        return {
+          ...app,
+          jobTitle: job?.title || 'Engineering Role',
+          companyName: job?.companyName || 'Verified Partner',
+          location: job?.location || 'Remote',
+          stipendOrSalary: job?.stipendOrSalary || 'Competitive'
+        };
+      });
+
+    // 4. Roadmap Data
+    const occ = store.occupations.find(o => o.id === student.targetOccupationId) || store.occupations[0];
+    const missing = [
+      ...occ.requiredSkills.filter(r => !studentSkillsLower.has(r.skillName.toLowerCase())).map(r => ({ ...r, type: 'Required' as const })),
+      ...occ.preferredSkills.filter(p => !studentSkillsLower.has(p.skillName.toLowerCase())).map(p => ({ ...p, type: 'Preferred' as const }))
+    ];
+
+    const roadmapModules = missing.map((item, index) => {
+      const resources = store.learningResources.filter(r => r.skillName.toLowerCase() === item.skillName.toLowerCase());
+      const stepIdPrefix = `step-${item.skillId || index}`;
+      const steps = [
+        {
+          id: `${stepIdPrefix}-1`,
+          title: `Core Architectural Concepts of ${item.skillName}`,
+          description: `Understand why ${item.skillName} is essential for ${occ.title} and review official documentation and fundamentals.`,
+          completed: student.completedRoadmapStepIds?.includes(`${stepIdPrefix}-1`) || false
+        },
+        {
+          id: `${stepIdPrefix}-2`,
+          title: `Hands-on Implementation & Local Lab`,
+          description: `Implement real code patterns or container configurations solving a standalone technical exercise.`,
+          completed: student.completedRoadmapStepIds?.includes(`${stepIdPrefix}-2`) || false
+        },
+        {
+          id: `${stepIdPrefix}-3`,
+          title: `Production Portfolio Project Integration`,
+          description: resources[0]?.projectIdea || `Build and deploy a verifiable module showcasing ${item.skillName} on GitHub.`,
+          completed: student.completedRoadmapStepIds?.includes(`${stepIdPrefix}-3`) || false
+        }
+      ];
+      const completedCount = steps.filter(s => s.completed).length;
+      return {
+        skillName: item.skillName,
+        type: item.type,
+        priority: (item.weight >= 0.9 ? 'Critical' : item.weight >= 0.7 ? 'High' : 'Medium') as 'Critical' | 'High' | 'Medium',
+        steps,
+        progressPct: Math.round((completedCount / steps.length) * 100),
+        resources
+      };
     });
+
+    const totalSteps = roadmapModules.reduce((acc, m) => acc + m.steps.length, 0);
+    const totalCompleted = roadmapModules.reduce((acc, m) => acc + m.steps.filter(s => s.completed).length, 0);
+    const overallRoadmapProgress = totalSteps > 0 ? Math.round((totalCompleted / totalSteps) * 100) : 0;
+
+    const roadmapData = {
+      targetOccupation: occ.title,
+      overallRoadmapProgress,
+      totalSteps,
+      totalCompleted,
+      modules: roadmapModules
+    };
 
     res.json({
-      targetOccupation: occupation,
-      requiredCoveragePct,
-      preferredCoveragePct,
-      overallReadinessScore,
-      matchedRequired,
-      missingRequired,
-      matchedPreferred,
-      missingPreferred,
-      bridgeConnections,
-      aiGuidance,
-      calculationFormula: {
-        formulaText: "Overall Readiness = (0.75 × Required Coverage) + (0.25 × Preferred Coverage)",
-        requiredCoverageFormula: "Σ(Matched Required Weights) / Σ(Total Required Weights)",
-        preferredCoverageFormula: "Σ(Matched Preferred Weights) / Σ(Total Preferred Weights)"
-      }
+      student,
+      allStudents: store.students,
+      gapData,
+      jobs: enrichedJobs,
+      applications: studentApps,
+      roadmap: roadmapData
     });
+  } catch (err: any) {
+    console.error('Dashboard summary error:', err);
+    res.status(500).json({ error: err.message || 'Failed to load dashboard summary' });
+  }
+});
+
+// Dedicated skill-gap endpoint (cached for sub-10ms response)
+apiRouter.get('/student/skill-gap', async (req, res) => {
+  try {
+    const student = getActiveStudent();
+    const occupationId = req.query.occupationId as string | undefined;
+    const forceFresh = req.query.forceFresh === 'true';
+    const result = await computeSkillGap(student.id, occupationId, forceFresh);
+    res.json(result);
   } catch (err: any) {
     console.error('Skill gap calculation error:', err);
     res.status(500).json({ error: err.message || 'Failed to compute skill gap' });
@@ -641,6 +815,8 @@ apiRouter.post('/assessments/:id/submit', (req, res) => {
       }
     }
   });
+
+  invalidateStudentCaches(activeStudent.id);
 
   res.json({
     score: scorePct,
@@ -962,6 +1138,7 @@ apiRouter.get('/admin/overview', (req, res) => {
 
 apiRouter.post('/demo/reset', (req, res) => {
   db.resetToSeed();
+  invalidateStudentCaches();
   currentUserId = 'usr-student-1';
   res.json({ success: true, message: 'Database reset to canonical seed state.' });
 });

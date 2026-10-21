@@ -241,19 +241,90 @@ function fallbackRuleBasedParser(text: string, canonicalSkills: Skill[]): Parsed
   };
 }
 
+// In-memory cache for skill-gap guidance to eliminate slow repetitive Gemini API roundtrips
+export interface SkillGapGuidanceResult {
+  executiveSummary: string;
+  strategicSteps: string[];
+  portfolioProjects: string[];
+  estimatedWeeksToReadiness: number;
+}
+
+const guidanceCache = new Map<string, { timestamp: number; data: SkillGapGuidanceResult }>();
+const GUIDANCE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+function buildGuidanceCacheKey(params: {
+  targetOccupation: string;
+  matchedSkills: string[];
+  missingRequired: string[];
+  missingPreferred: string[];
+  overallReadiness: number;
+}): string {
+  const m = [...params.matchedSkills].sort().join(',');
+  const mr = [...params.missingRequired].sort().join(',');
+  const mp = [...params.missingPreferred].sort().join(',');
+  return `${params.targetOccupation}::${params.overallReadiness}::${m}::${mr}::${mp}`;
+}
+
+export function buildDeterministicGuidance(params: {
+  targetOccupation: string;
+  matchedSkills: string[];
+  missingRequired: string[];
+  missingPreferred: string[];
+  overallReadiness: number;
+}): SkillGapGuidanceResult {
+  const weeks = Math.max(2, Math.ceil((params.missingRequired.length * 1.5) + (params.missingPreferred.length * 0.5)));
+  const primaryMissing = params.missingRequired[0] || 'core technical competencies';
+  const secondaryMissing = params.missingRequired[1] || params.missingPreferred[0] || 'advanced tooling';
+  const primaryMatched = params.matchedSkills[0] || 'software foundations';
+  const secondaryMatched = params.matchedSkills[1] || 'engineering practices';
+
+  const competitiveStatus =
+    params.overallReadiness >= 80
+      ? 'Strong competitive position for top-tier hiring pipelines'
+      : params.overallReadiness >= 60
+      ? 'Promising foundation with targeted high-priority skill deficits'
+      : 'Early-stage readiness requiring focused prerequisite mastery';
+
+  return {
+    executiveSummary: `${competitiveStatus}. You have verified capabilities in ${params.matchedSkills.length} key areas matching ${params.targetOccupation}. Addressing the ${params.missingRequired.length} missing required competencies will boost your hiring index from ${params.overallReadiness}% to over 92%.`,
+    strategicSteps: [
+      `High Priority: Master ${primaryMissing} through targeted documentation and hands-on laboratory exercises.`,
+      `Leverage Bridge: Utilize your verified foundation in ${primaryMatched} to accelerate learning curve for ${secondaryMissing}.`,
+      `Placements Readiness: Build and deploy one end-to-end production capstone with automated unit tests and CI/CD before campus drives.`
+    ],
+    portfolioProjects: [
+      `Enterprise ${primaryMissing} Service: Architect a high-throughput backend bridging ${primaryMatched} with ${primaryMissing} deployed on containerized infrastructure.`,
+      `Scalable Data & API Workflow: Build a production-grade system integrating ${secondaryMatched} with automated performance benchmarks and monitoring.`
+    ],
+    estimatedWeeksToReadiness: weeks
+  };
+}
+
 export async function generateSkillGapGuidance(params: {
   targetOccupation: string;
   matchedSkills: string[];
   missingRequired: string[];
   missingPreferred: string[];
   overallReadiness: number;
-}): Promise<{
-  executiveSummary: string;
-  strategicSteps: string[];
-  portfolioProjects: string[];
-  estimatedWeeksToReadiness: number;
-}> {
-  if (ai) {
+}): Promise<SkillGapGuidanceResult> {
+  const cacheKey = buildGuidanceCacheKey(params);
+  const cached = guidanceCache.get(cacheKey);
+
+  if (cached && (Date.now() - cached.timestamp < GUIDANCE_CACHE_TTL_MS)) {
+    return cached.data;
+  }
+
+  // Pre-generate rich instant deterministic guidance (<1ms)
+  const instantGuidance = buildDeterministicGuidance(params);
+
+  // If no AI client is available, cache and return instant guidance immediately
+  if (!ai) {
+    guidanceCache.set(cacheKey, { timestamp: Date.now(), data: instantGuidance });
+    return instantGuidance;
+  }
+
+  // If AI client is configured, race with a strict 1200ms timeout so Render free tier never blocks/stalls
+  const aiPromise = (async () => {
     try {
       const prompt = `You are the Lead Career Intelligence Advisor for Career Ladder (Smart India Hackathon 2026).
 A student is targeting the role: "${params.targetOccupation}".
@@ -290,26 +361,29 @@ Return ONLY valid JSON (no markdown):
 
       const text = response.text?.trim() || '';
       if (text) {
-        return JSON.parse(text);
+        const parsed = JSON.parse(text) as SkillGapGuidanceResult;
+        guidanceCache.set(cacheKey, { timestamp: Date.now(), data: parsed });
+        return parsed;
       }
     } catch (e) {
-      console.warn('Gemini skill gap guidance generation failed, falling back:', e);
+      console.warn('Gemini skill gap guidance generation failed or timed out, using instant guidance:', e);
     }
+    return null;
+  })();
+
+  const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1200));
+
+  try {
+    const fastResult = await Promise.race([aiPromise, timeoutPromise]);
+    if (fastResult) {
+      return fastResult;
+    }
+  } catch {
+    // ignore
   }
 
-  // Deterministic fallback guidance
-  const weeks = Math.max(2, Math.ceil((params.missingRequired.length * 1.5) + (params.missingPreferred.length * 0.5)));
-  return {
-    executiveSummary: `You have strong foundations with ${params.matchedSkills.length} key capabilities matching ${params.targetOccupation}. Focusing on the ${params.missingRequired.length} missing required skills will elevate your hiring readiness from ${params.overallReadiness}% to over 90%.`,
-    strategicSteps: [
-      `Prioritize ${params.missingRequired[0] || 'core missing skills'} first through hands-on containerized exercises and API specs.`,
-      `Leverage your existing grasp of ${params.matchedSkills[0] || 'foundational tools'} to fast-track related frameworks.`,
-      `Build and deploy one end-to-end production-grade portfolio project with automated tests and CI/CD before campus placements.`
-    ],
-    portfolioProjects: [
-      `High-Throughput Microservice with ${params.missingRequired[0] || 'Docker'}: Build an asynchronous backend integrating ${params.matchedSkills[0] || 'Python'} with automated container deployment.`,
-      `Distributed Data Pipeline: Process real-time events using database transactions, caching, and clean RESTful design.`
-    ],
-    estimatedWeeksToReadiness: weeks
-  };
+  // If AI took >1200ms or failed, immediately return high-quality instant guidance
+  // and cache it so the client gets an instantaneous response.
+  guidanceCache.set(cacheKey, { timestamp: Date.now(), data: instantGuidance });
+  return instantGuidance;
 }

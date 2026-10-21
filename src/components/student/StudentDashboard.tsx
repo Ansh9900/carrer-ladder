@@ -32,25 +32,39 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate, 
   const [roadmap, setRoadmap] = useState<RoadmapData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadData = async () => {
+  const loadData = async (isSilent = false) => {
     try {
-      setLoading(true);
-      const [profRes, gapRes, jobsRes, appsRes, roadRes, studentsRes] = await Promise.all([
-        api.getStudentProfile(),
-        api.getSkillGap(),
-        api.getJobs(),
-        api.getStudentApplications(),
-        api.getRoadmap(),
-        api.getStudents()
-      ]);
-      setProfile(profRes.student);
-      setGapData(gapRes);
-      setJobs(jobsRes.jobs.slice(0, 3));
-      setApplications(appsRes.applications);
-      setRoadmap(roadRes);
-      setAllStudents(studentsRes.students || []);
+      if (!isSilent && !profile) {
+        setLoading(true);
+      }
+      const data = await api.getDashboardSummary();
+      setProfile(data.student);
+      setGapData(data.gapData);
+      setJobs(data.jobs.slice(0, 3));
+      setApplications(data.applications);
+      setRoadmap(data.roadmap);
+      setAllStudents(data.allStudents || []);
     } catch (e) {
       console.error('Error loading student dashboard:', e);
+      // Resilient fallback to individual endpoints if summary endpoint encounters an error
+      try {
+        const [profRes, gapRes, jobsRes, appsRes, roadRes, studentsRes] = await Promise.all([
+          api.getStudentProfile(),
+          api.getSkillGap(),
+          api.getJobs(),
+          api.getStudentApplications(),
+          api.getRoadmap(),
+          api.getStudents()
+        ]);
+        setProfile(profRes.student);
+        setGapData(gapRes);
+        setJobs(jobsRes.jobs.slice(0, 3));
+        setApplications(appsRes.applications);
+        setRoadmap(roadRes);
+        setAllStudents(studentsRes.students || []);
+      } catch (err) {
+        console.error('Fallback load error:', err);
+      }
     } finally {
       setLoading(false);
     }
@@ -60,7 +74,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate, 
     try {
       setLoading(true);
       await api.switchActiveStudent(studentId);
-      await loadData();
+      await loadData(false);
     } catch (e) {
       console.error('Failed to switch student:', e);
       setLoading(false);
